@@ -1,0 +1,16 @@
+{
+  "name": "infinitedesk-sdk",
+  "version": "0.2.0",
+  "private": true,
+  "description": "InfiniteDesk 插件开发 SDK（运行时 / 类型 / 调试器 / CLI / 示例 / 文档）",
+  "license": "MIT",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "devDependencies": {
+    "vitepress": "^1.0.0"
+  }
+}

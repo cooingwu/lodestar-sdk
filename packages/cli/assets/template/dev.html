@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InfiniteDesk 插件预览</title>
+<!--
+  浏览器版插件调试器（M2 切片 C）：不装 InfiniteDesk 也能预览插件面板。
+  用法一：把本文件复制进插件目录，任意静态服务器打开 /dev.html（如 npx serve .）
+  用法二：desk-plugin dev（@infinitedesk/cli）自动注入本页
+  原理：本页实现 desk 协议的"迷你宿主"——desk.js 零改动，插件与真实宿主的
+  行为漂移从根上避免。storage 落 localStorage（刷新/重启浏览器仍保留）、
+  notify 用浏览器通知、savefile 转下载、fetch 直连（受浏览器 CORS 限制）、
+  icons/files/wallpaper/canvas 为 mock（回执带 mock:true，页面顶部有标识）。
+-->
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0d111b;
+    font: 13px 'Segoe UI', 'Microsoft YaHei'; color: #dfe7f5; }
+  #bar { position: fixed; inset: 0 0 auto 0; height: 44px; display: flex; align-items: center;
+    gap: 10px; padding: 0 14px; background: rgba(20,26,40,.97); border-bottom: 1px solid rgba(255,255,255,.1);
+    z-index: 1000; user-select: none; }
+  #bar b { font-size: 14px; }
+  #pinfo { color: rgba(200,214,235,.6); }
+  #bar .grow { flex: 1; }
+  #bar button { background: rgba(96,150,255,.18); border: 1px solid rgba(120,170,255,.45);
+    color: #dfe7f5; border-radius: 6px; padding: 5px 12px; cursor: pointer; font: inherit; }
+  #bar button:hover { background: rgba(96,150,255,.35); }
+  .mock-badge { color: #e8c06a; font-size: 12px; }
+  #stage { position: fixed; inset: 44px 0 0 0; overflow: auto; }
+  .hint { position: fixed; left: 14px; bottom: 10px; color: rgba(255,255,255,.25); pointer-events: none; }
+  /* 面板：观感对齐宿主（白底便签 + 头部 + 缩放手柄） */
+  .panel { position: absolute; width: 300px; height: 240px; display: flex; flex-direction: column;
+    border: 1px solid rgba(120,120,120,.35); border-radius: 8px; background: #fffdf0;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .panel-head { box-sizing: border-box; flex: 0 0 auto; display: flex; align-items: center;
+    justify-content: flex-end; padding: 0 10px; height: 28px; background: rgba(0,0,0,.05);
+    cursor: grab; user-select: none; font-size: 12px; color: #555; }
+  .panel-head .t { flex: 1 1 auto; text-align: left; white-space: nowrap; overflow: hidden; }
+  .panel-head .t i { font-style: normal; color: #999; margin-left: 4px; }
+  .panel-head .b { cursor: pointer; padding: 0 5px; border-radius: 4px; }
+  .panel-head .b:hover { background: rgba(220,80,80,.35); }
+  .panel iframe { flex: 0 0 auto; border: 0; width: 100%; height: calc(100% - 28px);
+    background: transparent; border-radius: 0 0 8px 8px; }
+  .panel.collapsed iframe, .panel.collapsed .rs { display: none; }
+  .panel.collapsed { height: 28px !important; }
+  .rs { position: absolute; right: 2px; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize;
+    color: rgba(0,0,0,.35); font-size: 12px; line-height: 16px; text-align: center; z-index: 5;
+    user-select: none; }
+  #toast { position: fixed; right: 14px; bottom: 14px; max-width: 420px; background: rgba(28,32,44,.97);
+    border: 1px solid rgba(255,255,255,.15); border-radius: 8px; padding: 8px 12px; display: none; z-index: 2000; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <b id="pname">插件预览</b><span id="pinfo">读取 manifest.json…</span>
+  <span class="grow"></span>
+  <span class="mock-badge">预览模式：icons/files/wallpaper/canvas 为 mock</span>
+  <button id="add">＋ 新实例</button>
+  <button id="wipe">清空存储</button>
+</div>
+<div id="stage"></div>
+<div class="hint">拖标题栏移动 · 右下角 ◢ 缩放 · ▾ 折叠 · × 删除</div>
+<div id="toast"></div>
+<script>
+(function () {
+  'use strict';
+  var qs = new URLSearchParams(location.search);
+  var pluginDir = qs.get('plugin') || './';       // dev.html 在插件目录里；或 ?plugin=子目录/
+  var manifest = null;
+  var z = 10;
+  var seq = 0;
+  var byInst = {};                                 // instance → 面板 el（plugin.drag 用）
+  var LS = 'desk-mock.';                           // localStorage 键前缀（instance 隔离）
+
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    clearTimeout(toast._h);
+    toast._h = setTimeout(function () { t.style.display = 'none'; }, 2600);
+  }
+
+  // ---- manifest ----
+  fetch(pluginDir + 'manifest.json')
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+    .then(function (m) {
+      manifest = m;
+      document.getElementById('pname').textContent = m.name || m.id || '未命名插件';
+      document.getElementById('pinfo').textContent =
+        (m.id || '?') + ' v' + (m.version || '?') +
+        (m.permissions && m.permissions.length ? ' · 权限：' + m.permissions.join('、') : '') +
+        (m.panelStyle === 'bare' ? ' · bare 形态' : '');
+      // manifest 异步到达晚于首批面板创建时回填标题（首屏面板曾显示兜底名"插件"）
+      for (var els = document.querySelectorAll('.panel .t'), i = 0; i < els.length; i++)
+        if (els[i].childNodes[0]) els[i].childNodes[0].nodeValue = '⠿ ' + (m.name || m.id || '插件') + ' ';
+    })
+    .catch(function (e) {
+      document.getElementById('pinfo').textContent = '未找到 manifest.json（' + e.message + '）';
+    });
+
+  // ---- 面板管理 ----
+  function addPanel() {
+    var inst = 'dev' + (++seq);
+    var el = document.createElement('div');
+    el.className = 'panel';
+    var head = document.createElement('div');
+    head.className = 'panel-head';
+    var title = document.createElement('span');
+    title.className = 't';
+    title.textContent = '⠿ ' + ((manifest && manifest.name) || '插件');
+    var instTag = document.createElement('i');
+    instTag.textContent = inst;
+    title.appendChild(instTag);
+    var fold = document.createElement('span');
+    fold.className = 'b'; fold.textContent = '▾'; fold.title = '折叠/展开';
+    var del = document.createElement('span');
+    del.className = 'b'; del.textContent = '×'; del.title = '删除实例（连带其存储）';
+    head.append(title, fold, del);
+    var frame = document.createElement('iframe');
+    frame.src = pluginDir + 'index.html?instance=' + encodeURIComponent(inst) + '&_v=' + Date.now();
+    var rs = document.createElement('div');
+    rs.className = 'rs'; rs.textContent = '◢'; rs.title = '缩放';
+    el.append(head, frame, rs);
+    el.style.left = (60 + (seq - 1) * 36) + 'px';
+    el.style.top = (40 + (seq - 1) * 28) + 'px';
+    el.style.zIndex = ++z;
+    document.getElementById('stage').appendChild(el);
+    byInst[inst] = el;
+
+    el.addEventListener('pointerdown', function () { el.style.zIndex = ++z; }, true);
+    fold.onclick = function (ev) { ev.stopPropagation(); el.classList.toggle('collapsed'); fold.textContent = el.classList.contains('collapsed') ? '▸' : '▾'; };
+    del.onclick = function (ev) {
+      ev.stopPropagation();
+      el.remove();
+      delete byInst[inst];
+      for (var i = localStorage.length - 1; i >= 0; i--) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(LS + inst + '.') === 0) localStorage.removeItem(k);
+      }
+    };
+    // 拖动 / 缩放（pointer capture，与宿主同款手法）
+    dragify(head, function (dx, dy) {
+      el.style.left = (parseFloat(el.style.left) || 0) + dx + 'px';
+      el.style.top = (parseFloat(el.style.top) || 0) + dy + 'px';
+    });
+    dragify(rs, function (dx, dy) {
+      el.style.width = Math.max(160, (parseFloat(el.style.width) || 300) + dx) + 'px';
+      el.style.height = Math.max(120, (parseFloat(el.style.height) || 240) + dy) + 'px';
+    });
+    // 宿主无"初始视口事件"，这里发一条已知初值（比真实宿主更友好，不构成行为差异）
+    frame.addEventListener('load', function () {
+      try { frame.contentWindow.postMessage({ __desk: true, t: 'viewport', x: 0, y: 0, scale: 1 }, '*'); } catch (e) { }
+    });
+    return el;
+  }
+
+  function dragify(handle, onMove) {
+    handle.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      var sx = e.clientX, sy = e.clientY;
+      try { handle.setPointerCapture(e.pointerId); } catch (x) { }
+      function move(ev) { onMove(ev.clientX - sx, ev.clientY - sy); sx = ev.clientX; sy = ev.clientY; }
+      function up() { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); handle.removeEventListener('lostpointercapture', up); }
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', up);
+      handle.addEventListener('lostpointercapture', up);
+    });
+  }
+
+  document.getElementById('add').onclick = addPanel;
+  document.getElementById('wipe').onclick = function () {
+    for (var i = localStorage.length - 1; i >= 0; i--) {
+      var k = localStorage.key(i);
+      if (k && k.indexOf(LS) === 0) localStorage.removeItem(k);
+    }
+    toast('已清空本插件（全部实例）的预览存储');
+  };
+  addPanel();
+
+  // ---- 迷你宿主：desk 协议的浏览器实现（desk.js 零改动） ----
+  function lsKey(inst, k) { return LS + inst + '.' + k; }
+  function notify(title, body) {
+    try {
+      if (typeof Notification === 'undefined') throw new Error('no Notification');
+      if (Notification.permission === 'granted') new Notification(title || 'InfiniteDesk', { body: body || '' });
+      else if (Notification.permission !== 'denied')
+        Notification.requestPermission().then(function (p) { if (p === 'granted') new Notification(title || 'InfiniteDesk', { body: body || '' }); });
+      else toast('通知（浏览器权限被拒）：' + (title || '') + ' ' + (body || ''));
+    } catch (e) { toast('通知：' + (title || '') + ' ' + (body || '')); }
+  }
+  function download(name, base64) {
+    try {
+      var a = document.createElement('a');
+      a.href = 'data:application/octet-stream;base64,' + (base64 || '');
+      a.download = name || 'image.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast('已触发下载：' + a.download + '（真实宿主保存到 图片\\InfiniteDesk）');
+    } catch (e) { toast('下载失败：' + e.message); }
+  }
+
+  window.addEventListener('message', function (e) {
+    var m = e.data;
+    if (!m || m.__desk !== true) return;
+    var src = e.source;
+    function reply(msg) { msg.instance = m.instance; try { src.postMessage(msg, '*'); } catch (x) { } }
+    switch (m.t) {
+      case 'plugin.kv.get':
+        reply({ t: 'plugin.kv', k: m.k, v: localStorage.getItem(lsKey(m.instance, m.k)) });
+        break;
+      case 'plugin.kv.set':
+        try { localStorage.setItem(lsKey(m.instance, m.k), String(m.v ?? '')); }
+        catch (ex) {
+          reply({ t: 'plugin.kv', k: m.k, v: null, err: 'quota' });   // 浏览器 localStorage 满时对齐宿主的超配额回执
+          toast('预览存储配额已满（localStorage），写入被拒绝');
+        }
+        break;
+      case 'plugin.notify': notify(m.title, m.body); break;
+      case 'plugin.savefile': download(m.name, m.data); break;
+      case 'plugin.fetch':
+        fetch(m.url)
+          .then(function (r) { return r.text().then(function (tx) { reply({ t: 'plugin.fetch.result', reqId: m.reqId, ok: r.ok, status: r.status, body: tx, mock: true }); }); })
+          .catch(function (err) {
+            reply({ t: 'plugin.fetch.result', reqId: m.reqId, ok: false, status: 0,
+              body: '[预览] ' + err.message + '（浏览器版受 CORS 限制；真实宿主走代理无此限制）' });
+          });
+        break;
+      case 'plugin.clipboard.get':
+        if (navigator.clipboard && navigator.clipboard.readText)
+          navigator.clipboard.readText()
+            .then(function (t) { reply({ t: 'clipboard.result', text: t }); },
+                  function () { reply({ t: 'clipboard.result', text: '', mock: true }); });
+        else reply({ t: 'clipboard.result', text: '', mock: true });
+        break;
+      case 'plugin.clipboard.set':
+        try { navigator.clipboard.writeText(String(m.text ?? '')); } catch (x) { }
+        break;
+      case 'plugin.system.info':
+        reply({ t: 'system.info', info: { mock: true, note: '预览模式：电量/内存需真实宿主' } });
+        break;
+      case 'plugin.icons.list':
+        reply({ t: 'icons.list', icons: [], mock: true });
+        break;
+      case 'plugin.icons.move':
+      case 'plugin.icons.override':
+      case 'plugin.files.write':
+      case 'plugin.wallpaper.set':
+        toast('（预览 mock，不生效）' + m.t);
+        break;
+      case 'plugin.canvas.clear':
+      case 'plugin.canvas.draw':
+        toast('（预览）画布涂层挂在画布世界上，预览中不可见');
+        break;
+      case 'plugin.drag':
+        if (byInst[m.instance]) {
+          var el = byInst[m.instance];
+          el.style.left = (parseFloat(el.style.left) || 0) + Number(m.dx || 0) + 'px';
+          el.style.top = (parseFloat(el.style.top) || 0) + Number(m.dy || 0) + 'px';
+        }
+        break;
+      case '__frameActive':
+        if (byInst[m.instance]) byInst[m.instance].style.zIndex = ++z;
+        break;
+    }
+  });
+})();
+</script>
+</body>
+</html>

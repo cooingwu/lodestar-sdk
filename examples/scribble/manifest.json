@@ -1,0 +1,7 @@
+{
+  "id": "scribble",
+  "name": "涂鸦",
+  "version": "0.1.0",
+  "author": "InfiniteDesk",
+  "description": "官方涂鸦插件（SDK 示例）：画笔/荧光笔/橡皮，笔画自动持久化，内容随面板缩放"
+}

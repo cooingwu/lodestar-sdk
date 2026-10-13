@@ -1,0 +1,158 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; }
+  #bar {
+    display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 8px;
+    background: #f2f2f2; border-bottom: 1px solid #ddd; user-select: none;
+    font: 12px 'Segoe UI', 'Microsoft YaHei'; overflow-x: auto; overflow-y: hidden;
+  }
+  #bar > * { flex: 0 0 auto; }   /* 面板变窄时工具/色块不收缩变形（真机：色块被挤成椭圆） */
+  .tool { padding: 3px 9px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+  .tool.on { background: #dcebff; border-color: #7ab0ff; }
+  .sw { width: 16px; height: 16px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+  .sw.on { border-color: #333; }
+  .sep { width: 1px; height: 18px; background: #ccc; margin: 0 2px; }
+  .act { padding: 3px 9px; border-radius: 6px; cursor: pointer; }
+  .act:hover { background: #e5e5e5; }
+  #cv { display: block; width: 100%; height: calc(100% - 34px); cursor: crosshair; touch-action: none; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <span class="tool on" data-tool="pen" title="画笔">✏️</span>
+  <span class="tool" data-tool="hl" title="荧光笔">🖍</span>
+  <span class="tool" data-tool="eraser" title="橡皮">🧽</span>
+  <span class="sep"></span>
+  <span class="sw on" data-c="#222" style="background:#222"></span>
+  <span class="sw" data-c="#e33" style="background:#e33"></span>
+  <span class="sw" data-c="#26c" style="background:#26c"></span>
+  <span class="sw" data-c="#2a2" style="background:#2a2"></span>
+  <span class="sep"></span>
+  <span class="act" id="undo" title="撤销">↩</span>
+  <span class="act" id="clear" title="清空">🗑</span>
+  <span class="act" id="save" title="导出 PNG 到 图片\InfiniteDesk">📥</span>
+</div>
+<canvas id="cv"></canvas>
+<script src="desk.js"></script>
+<script>
+  // InfiniteDesk Plugin SDK：desk.storage 持久化笔画
+  const cv = document.getElementById('cv');
+  const g = cv.getContext('2d');
+  let tool = 'pen', color = '#222';
+  let strokes = [];          // [{t:'pen'|'hl'|'eraser', c, w, p:[[x,y],...]}]，坐标归一化 0-1（随面板缩放）
+  let cur = null;
+  let saveTimer = 0;
+
+  function fit() {
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(cv.clientWidth * dpr);
+    cv.height = Math.round(cv.clientHeight * dpr);
+    redraw();
+  }
+  window.addEventListener('resize', fit);
+
+  function styleOf(s) {
+    g.lineCap = g.lineJoin = 'round';
+    g.strokeStyle = s.c;
+    g.globalAlpha = s.t === 'hl' ? 0.35 : 1;
+    g.globalCompositeOperation = s.t === 'eraser' ? 'destination-out' : 'source-over';
+  }
+
+  function drawStroke(s) {
+    const pr = i => (s.p[i][2] ?? 0.5);   // 每点压力（无压感设备恒 0.5）
+    const baseW = s.t === 'hl' ? s.w * 4 : s.w;
+    styleOf(s);
+    if (s.p.length < 2) {
+      g.beginPath();
+      g.lineWidth = baseW;
+      g.arc(s.p[0][0] * cv.width, s.p[0][1] * cv.height, baseW / 2, 0, 7);
+      g.fillStyle = s.c; g.fill();
+      return;
+    }
+    // 逐段变宽（压感：段宽 = 基宽 × (0.55 + 平均压力 × 0.9)；橡皮固定宽）
+    for (let i = 1; i < s.p.length; i++) {
+      g.lineWidth = s.t === 'eraser' ? baseW
+        : baseW * (0.55 + (pr(i - 1) + pr(i)) / 2 * 0.9);
+      g.beginPath();
+      g.moveTo(s.p[i - 1][0] * cv.width, s.p[i - 1][1] * cv.height);
+      g.lineTo(s.p[i][0] * cv.width, s.p[i][1] * cv.height);
+      g.stroke();
+    }
+  }
+
+  function redraw() {
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, cv.width, cv.height);
+    for (const s of strokes) drawStroke(s);
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
+  }
+
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => desk.storage.set('strokes', JSON.stringify(strokes)), 600);
+  }
+
+  // 工具栏
+  for (const el of document.querySelectorAll('.tool'))
+    el.onclick = () => {
+      document.querySelectorAll('.tool').forEach(x => x.classList.remove('on'));
+      el.classList.add('on');
+      tool = el.dataset.tool;
+    };
+  for (const el of document.querySelectorAll('.sw'))
+    el.onclick = () => {
+      document.querySelectorAll('.sw').forEach(x => x.classList.remove('on'));
+      el.classList.add('on');
+      color = el.dataset.c;
+    };
+  document.getElementById('undo').onclick = () => { strokes.pop(); redraw(); save(); };
+  document.getElementById('clear').onclick = () => { strokes = []; redraw(); save(); };
+  document.getElementById('save').onclick = () => {
+    // 白底合成为 PNG 导出（透明底转白）
+    const out = document.createElement('canvas');
+    out.width = cv.width; out.height = cv.height;
+    const og = out.getContext('2d');
+    og.fillStyle = '#fff';
+    og.fillRect(0, 0, out.width, out.height);
+    og.drawImage(cv, 0, 0);
+    desk.saveImage('scribble-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.png', out.toDataURL('image/png'));
+  };
+
+  // 绘制（pointer events；坐标归一化）
+  cv.addEventListener('pointerdown', e => {
+    cv.setPointerCapture(e.pointerId);
+    cur = { t: tool, c: color, w: tool === 'eraser' ? 14 : 3, p: [[e.offsetX / cv.clientWidth, e.offsetY / cv.clientHeight, e.pressure || 0.5]] };
+    drawStroke(cur);
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!cur) return;
+    cur.p.push([e.offsetX / cv.clientWidth, e.offsetY / cv.clientHeight, e.pressure || 0.5]);
+    redraw();
+    drawStroke(cur);
+  });
+  const end = () => {
+    if (!cur) return;
+    strokes.push(cur);
+    cur = null;
+    redraw();
+    save();
+  };
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', end);
+
+  // 载入持久化笔画
+  desk.storage.get('strokes');
+  desk.on('plugin.kv', m => {
+    if (m.k === 'strokes' && m.v) {
+      try { strokes = JSON.parse(m.v); fit(); } catch { /* 损坏数据忽略 */ }
+    }
+  });
+
+  fit();
+</script>
+</body>
+</html>

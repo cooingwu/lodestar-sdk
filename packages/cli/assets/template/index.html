@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; font: 14px 'Segoe UI'; }
+  #t { width: 100%; height: 100%; border: 0; padding: 10px; box-sizing: border-box; resize: none; outline: none; }
+</style>
+</head>
+<body>
+<!-- desk.js 从 SDK 仓复制到本目录（v0 无构建链：纯静态文件即插件） -->
+<script src="desk.js"></script>
+<textarea id="t" placeholder="输入自动保存（desk.storage）…" spellcheck="false"></textarea>
+<script>
+  const t = document.getElementById('t');
+  let timer = 0;
+
+  // 读：异步，结果经事件送达
+  desk.storage.get('text');
+  desk.on('plugin.kv', m => { if (m.k === 'text' && m.v && !t.value) t.value = m.v; });
+
+  // 写：去抖
+  t.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => desk.storage.set('text', t.value), 400);
+  });
+</script>
+</body>
+</html>

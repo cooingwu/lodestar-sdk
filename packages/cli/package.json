@@ -1,0 +1,12 @@
+{
+  "name": "@infinitedesk/cli",
+  "version": "0.1.0",
+  "description": "InfiniteDesk 插件开发 CLI：desk-plugin create/dev/pack/validate（零依赖）",
+  "license": "MIT",
+  "bin": { "desk-plugin": "./desk.mjs" },
+  "files": ["desk.mjs", "lib.mjs", "assets"],
+  "private": true,
+  "scripts": {
+    "prepublishOnly": "node ../sync-assets.mjs"
+  }
+}
