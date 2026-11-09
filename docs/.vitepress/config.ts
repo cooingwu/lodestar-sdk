@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitepress';
 
 export default defineConfig({
+  // GitHub Pages 项目站：https://cooingwu.github.io/lodestar-sdk/
+  base: '/lodestar-sdk/',
   title: 'Lodestar 插件开发',
   description: '把 Windows 桌面变成无限画布——你的网页就是画布上的对象',
   lang: 'zh-CN',
@@ -8,7 +10,7 @@ export default defineConfig({
     nav: [
       { text: '指南', link: '/guide/intro' },
       { text: '示例', link: '/examples' },
-      { text: 'GitHub', link: 'https://github.com/' },
+      { text: 'GitHub', link: 'https://github.com/cooingwu/lodestar-sdk' },
     ],
     sidebar: [
       {
@@ -22,6 +24,8 @@ export default defineConfig({
         ],
       },
     ],
-    socialLinks: [],
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/cooingwu/lodestar-sdk' },
+    ],
   },
 });

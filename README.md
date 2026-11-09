@@ -1,6 +1,6 @@
 # lodestar-sdk
 
-[Lodestar](https://github.com/) 的插件开发 SDK（MIT 开源）：把 Windows 桌面变成
+[北辰 Lodestar](https://github.com/cooingwu/lodestar-sdk) 的插件开发 SDK（MIT 开源）：把 Windows 桌面变成
 无限画布，你的网页就是画布上的对象。
 
 > Lodestar 本体（闭源）开发中；本仓先以源码形式提供 SDK 与工具链。
@@ -33,14 +33,15 @@ npx serve .                                  # 任意静态服务器
 
 ## 文档
 
-文档站：`docs/`（`npm i && npm run docs:dev` 本地起）。
+文档站：**https://cooingwu.github.io/lodestar-sdk/**（本仓 `docs/`，`npm i && npm run docs:dev` 本地起）。
 最简阅读路径：`docs/guide/intro.md` → `manifest.md` → `api.md`。
 
-## 同步说明（发布前待办）
+## 同步说明
 
 desk.js / dev.html / template / CLI 的源头目前仍在私有主仓 `Lodestar/sdk/`
-（构建链在那里），本仓为发布镜像。发布前需要：CI 单向同步，或主仓改为包引用消费
-本仓（协议文件 protocol.ts 已按"本仓为 source of truth"标注）。
+（构建链在那里），本仓为发布镜像——主仓改动后跑 `node tools/sync-sdk.mjs` 追平
+（可加 `--market <market仓>` 一并同步插件市场仓）。最终形态：主仓改为包引用消费
+本仓（协议文件 protocol.ts 已按"本仓为 source of truth"标注），届时主仓 `sdk/` 目录退役。
 
 ## License
 
