@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// npm create @coohub/plugin <目录> 的入口（复用 @coohub/cli 的 create）
-import { cmdCreate } from '../cli/lib.mjs';
+// npm create @coohub/plugin <目录> 的入口（复用 @coohub/cli 的 create；
+// 0.1.0 曾用相对路径 '../cli/lib.mjs'——npm 安装态无此文件必崩，0.1.1 起走包依赖）
+import { cmdCreate } from '@coohub/cli/lib.mjs';
 
 const target = process.argv[2];
 if (!target) {
