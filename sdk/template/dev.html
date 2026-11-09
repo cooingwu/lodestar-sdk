@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>InfiniteDesk 插件预览</title>
+<title>Lodestar 插件预览</title>
 <!--
-  浏览器版插件调试器（M2 切片 C）：不装 InfiniteDesk 也能预览插件面板。
+  浏览器版插件调试器（M2 切片 C）：不装 Lodestar 也能预览插件面板。
   用法一：把本文件复制进插件目录，任意静态服务器打开 /dev.html（如 npx serve .）
-  用法二：desk-plugin dev（@infinitedesk/cli）自动注入本页
+  用法二：desk-plugin dev（@coohub/cli）自动注入本页
   原理：本页实现 desk 协议的"迷你宿主"——desk.js 零改动，插件与真实宿主的
   行为漂移从根上避免。storage 落 localStorage（刷新/重启浏览器仍保留）、
   notify 用浏览器通知、savefile 转下载、fetch 直连（受浏览器 CORS 限制）、
-  icons/files/wallpaper/canvas 为 mock（回执带 mock:true，页面顶部有标识）。
+  icons/files/wallpaper/canvas/appearance 为 mock（回执带 mock:true，页面顶部有标识）。
 -->
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #0d111b;
@@ -54,7 +54,7 @@
 <div id="bar">
   <b id="pname">插件预览</b><span id="pinfo">读取 manifest.json…</span>
   <span class="grow"></span>
-  <span class="mock-badge">预览模式：icons/files/wallpaper/canvas 为 mock</span>
+  <span class="mock-badge">预览模式：icons/files/wallpaper/canvas/appearance 为 mock</span>
   <button id="add">＋ 新实例</button>
   <button id="wipe">清空存储</button>
 </div>
@@ -183,9 +183,9 @@
   function notify(title, body) {
     try {
       if (typeof Notification === 'undefined') throw new Error('no Notification');
-      if (Notification.permission === 'granted') new Notification(title || 'InfiniteDesk', { body: body || '' });
+      if (Notification.permission === 'granted') new Notification(title || 'Lodestar', { body: body || '' });
       else if (Notification.permission !== 'denied')
-        Notification.requestPermission().then(function (p) { if (p === 'granted') new Notification(title || 'InfiniteDesk', { body: body || '' }); });
+        Notification.requestPermission().then(function (p) { if (p === 'granted') new Notification(title || 'Lodestar', { body: body || '' }); });
       else toast('通知（浏览器权限被拒）：' + (title || '') + ' ' + (body || ''));
     } catch (e) { toast('通知：' + (title || '') + ' ' + (body || '')); }
   }
@@ -197,7 +197,7 @@
       document.body.appendChild(a);
       a.click();
       a.remove();
-      toast('已触发下载：' + a.download + '（真实宿主保存到 图片\\InfiniteDesk）');
+      toast('已触发下载：' + a.download + '（真实宿主保存到 图片\\Lodestar）');
     } catch (e) { toast('下载失败：' + e.message); }
   }
 
@@ -243,6 +243,17 @@
       case 'plugin.icons.list':
         reply({ t: 'icons.list', icons: [], mock: true });
         break;
+      case 'plugin.appearance.get':
+        reply({ t: 'appearance.info', appearance: {
+          iconTextColor: localStorage.getItem('desk.appearance.iconTextColor') || '#f2f5fb',
+          iconTextShadow: localStorage.getItem('desk.appearance.iconTextShadow') || '85',
+          iconBgColor: localStorage.getItem('desk.appearance.iconBgColor') || '',
+        }, mock: true });
+        break;
+      case 'plugin.appearance.set':
+        try { localStorage.setItem('desk.appearance.' + m.key, String(m.value ?? '')); } catch (x) { }
+        toast('（预览 mock，已记入 localStorage 不改画布）appearance.' + m.key + '=' + m.value);
+        break;
       case 'plugin.icons.move':
       case 'plugin.icons.override':
       case 'plugin.files.write':
@@ -256,8 +267,10 @@
       case 'plugin.drag':
         if (byInst[m.instance]) {
           var el = byInst[m.instance];
-          el.style.left = (parseFloat(el.style.left) || 0) + Number(m.dx || 0) + 'px';
-          el.style.top = (parseFloat(el.style.top) || 0) + Number(m.dy || 0) + 'px';
+          // v0.5.1：cx/cy=自按下累计 client 增量（harness 1:1 无缩放，每条恰为上条
+          // 以来的增量，直接加）；dx/dy=旧协议逐条 screenX 差值（兼容）
+          el.style.left = (parseFloat(el.style.left) || 0) + Number(m.cx ?? m.dx ?? 0) + 'px';
+          el.style.top = (parseFloat(el.style.top) || 0) + Number(m.cy ?? m.dy ?? 0) + 'px';
         }
         break;
       case '__frameActive':

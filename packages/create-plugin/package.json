@@ -1,8 +1,8 @@
 {
-  "name": "@infinitedesk/create-plugin",
+  "name": "@coohub/create-plugin",
   "version": "0.1.0",
-  "description": "npm create @infinitedesk/plugin — InfiniteDesk 插件脚手架",
+  "description": "npm create @coohub/plugin — Lodestar 插件脚手架",
   "license": "MIT",
-  "bin": { "create-infinitedesk-plugin": "./create.mjs" },
+  "bin": { "create-lodestar-plugin": "./create.mjs" },
   "private": true
 }

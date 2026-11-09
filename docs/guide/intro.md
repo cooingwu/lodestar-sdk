@@ -8,7 +8,7 @@ my-plugin/
 └── index.html      # 插件 UI（必需）
 ```
 
-把目录放进 `%LOCALAPPDATA%\InfiniteDesk\plugins\` 即完成安装——**无需重启**，画布
+把目录放进 `%LOCALAPPDATA%\Lodestar\plugins\` 即完成安装——**无需重启**，画布
 空白处右键菜单立刻出现"新建<你的插件名>"。（开发期直接把目录放进去，改文件保存即热加载。）
 
 ## 运行环境（安全模型）

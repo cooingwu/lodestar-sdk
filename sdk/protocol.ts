@@ -43,6 +43,7 @@ export type HostToCanvas =
   | { t: 'plugin.kv'; instance: string; k: string; v: string | null; err?: string }  // storage.get 应答（err=quota：超配额拒绝）
   | { t: 'plugin.reload'; plugins: string[] }                          // 插件目录变化：重载其所有 iframe（热加载）
   | { t: 'settings'; key: string; value: string }                      // 设置变更广播（其他表面同步）
+  | { t: 'suspend'; on: boolean }                                       // 全屏挂起/恢复（宿主 QUNS 独占全屏检测，M1 收尾）
   | { t: 'key'; code: string; down: boolean; ctrl: boolean; shift: boolean }; // 键盘镜像（宿主 WH_KEYBOARD_LL）
 export type CanvasToHost =
   | { t: 'ready'; mon?: string }
@@ -80,7 +81,7 @@ export type CanvasToHost =
   | { t: 'panel.pin'; id: string; pinned: boolean }                       // 切换 跟随画布/固定屏幕
   | { t: 'panel.delete'; id: string }
   | { t: 'plugin.notify'; instance: string; title: string; body: string }  // 托盘通知
-  | { t: 'plugin.savefile'; instance: string; name: string; data: string } // 保存图片到 图片\InfiniteDesk（data=纯 base64）
+  | { t: 'plugin.savefile'; instance: string; name: string; data: string } // 保存图片到 图片\Lodestar（data=纯 base64）
   | { t: 'plugin.diag'; instance: string; s: string }                      // 插件 iframe 生命周期诊断（load/error）
   | { t: 'plugin.drag'; instance: string; dx: number; dy: number }         // bare 面板拖动（desk.setDraggable 声明的把手）
   | { t: 'settings.set'; key: string; value: string }                      // UI 设置持久化（壁纸模式/网格等，kv 存储+跨表面广播）

@@ -9,12 +9,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 /** 资产目录（sync-assets.mjs 从主仓 sdk/ 生成：template/ dev.html desk.js desk.d.ts） */
 export const ASSETS = resolve(__dirname, 'assets');
 
-export const HELP = `desk-plugin — InfiniteDesk 插件开发 CLI
+export const HELP = `desk-plugin — Lodestar 插件开发 CLI
 
 用法：
   desk-plugin create <目录>              从模板创建插件（manifest.id 自动取目录名）
   desk-plugin dev [目录] [--port N] [--no-open]
-                                         起本地服务器并打开浏览器预览（免装 InfiniteDesk）
+                                         起本地服务器并打开浏览器预览（免装 Lodestar）
   desk-plugin pack [目录]                校验 manifest 并打包 dist/<id>-<version>.zip
   desk-plugin validate [目录]            只校验，不打包
 
@@ -81,7 +81,7 @@ export async function cmdCreate(dest, flags = new Set()) {
   await writeFile(mfPath, JSON.stringify(mf, null, 2) + '\n', 'utf8');
   console.log(`已创建 ${root}`);
   console.log(`  开发：node sdk/npm/cli/desk.mjs dev ${root}（或装好 CLI 后 desk-plugin dev）`);
-  console.log(`  安装：把目录复制到 %LOCALAPPDATA%\\InfiniteDesk\\plugins\\${name}`);
+  console.log(`  安装：把目录复制到 %LOCALAPPDATA%\\Lodestar\\plugins\\${name}`);
 }
 
 async function copyTree(src, dest) {
@@ -166,7 +166,7 @@ export async function cmdPack(dir) {
   } else {
     console.log('  （非 Windows：请手动压缩目录为 zip）');
   }
-  console.log(`分发：用户解压到 %LOCALAPPDATA%\\InfiniteDesk\\plugins\\ 即安装`);
+  console.log(`分发：用户解压到 %LOCALAPPDATA%\\Lodestar\\plugins\\ 即安装`);
 }
 
 async function copyTreeFiltered(src, dest) {

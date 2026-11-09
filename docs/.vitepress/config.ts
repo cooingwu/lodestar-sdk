@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress';
 
 export default defineConfig({
-  title: 'InfiniteDesk 插件开发',
+  title: 'Lodestar 插件开发',
   description: '把 Windows 桌面变成无限画布——你的网页就是画布上的对象',
   lang: 'zh-CN',
   themeConfig: {

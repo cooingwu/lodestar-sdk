@@ -2,7 +2,7 @@
 hero: true
 ---
 
-# InfiniteDesk 插件开发
+# Lodestar 插件开发
 
 把 Windows 桌面变成**无限画布**：文件图标、便签、涂鸦和一切插件都是画布上的对象。
 
@@ -11,10 +11,10 @@ hero: true
 ## 三分钟上手
 
 ```bash
-npm create @infinitedesk/plugin my-plugin
+npm create @coohub/plugin my-plugin
 cd my-plugin
 npx serve .
-# 打开 http://localhost:3000/dev.html —— 不装 InfiniteDesk 也能预览
+# 打开 http://localhost:3000/dev.html —— 不装 Lodestar 也能预览
 ```
 
 ## 它能做什么

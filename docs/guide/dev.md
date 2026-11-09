@@ -1,6 +1,6 @@
 # 开发与调试
 
-## 方式一：浏览器预览（免装 InfiniteDesk）
+## 方式一：浏览器预览（免装 Lodestar）
 
 ```bash
 cd my-plugin
@@ -19,15 +19,15 @@ fetch 直连（受浏览器 CORS 限制）；icons/files/wallpaper/canvas 为 mo
 npx desk-plugin dev        # 起服务器并自动开浏览器
 ```
 
-## 方式二：真机（装 InfiniteDesk）
+## 方式二：真机（装 Lodestar）
 
-1. 目录放入 `%LOCALAPPDATA%\InfiniteDesk\plugins\` → 画布右键新建面板。
+1. 目录放入 `%LOCALAPPDATA%\Lodestar\plugins\` → 画布右键新建面板。
 2. 改文件保存 → 面板自动重载（热加载）。
 3. **DevTools**：设置 → 外观 → 开发者模式 → 开启并重启应用（或启动加 `--devtools`
    参数）；然后访问 `http://127.0.0.1:9223/json` / Chrome 的 `chrome://inspect`——
    画布页与各插件 iframe 都是可调试 target，console、断点、元素检查全可用（配额
    警告等 desk.js 输出在插件 iframe 的 console 里）。
-4. 宿主日志：`%LOCALAPPDATA%\InfiniteDesk\logs\`（面板生命周期、权限拦截、配额
+4. 宿主日志：`%LOCALAPPDATA%\Lodestar\logs\`（面板生命周期、权限拦截、配额
    拒绝均有留痕）。
 
 ## 打包校验

@@ -53,7 +53,7 @@ desk.wallpaper.set(dataUrl);              // 立即生效（fixed/zoom 模式均
 
 ```js
 desk.notify(title, body);                 // 托盘气泡（需 notify）
-desk.saveImage('截图.png', canvas.toDataURL());  // 落盘 图片\InfiniteDesk（需 saveImage）
+desk.saveImage('截图.png', canvas.toDataURL());  // 落盘 图片\Lodestar（需 saveImage）
 ```
 
 ## 面板交互

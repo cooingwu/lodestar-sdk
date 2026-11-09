@@ -3,6 +3,6 @@
   "name": "我的插件",
   "version": "0.1.0",
   "author": "you",
-  "description": "插件脚手架模板：把它复制到 %LOCALAPPDATA%\\InfiniteDesk\\plugins\\hello-desk 即生效",
+  "description": "插件脚手架模板：把它复制到 %LOCALAPPDATA%\\Lodestar\\plugins\\hello-desk 即生效",
   "permissions": ["notify", "saveImage"]
 }

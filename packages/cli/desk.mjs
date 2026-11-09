@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// desk-plugin — InfiniteDesk 插件开发 CLI 入口（实现在 lib.mjs）
+// desk-plugin — Lodestar 插件开发 CLI 入口（实现在 lib.mjs）
 import { cmdCreate, cmdDev, cmdPack, cmdValidate, HELP } from './lib.mjs';
 
 const [, , cmd, ...rest] = process.argv;
