@@ -5,8 +5,5 @@
   "license": "MIT",
   "bin": { "desk-plugin": "./desk.mjs" },
   "files": ["desk.mjs", "lib.mjs", "assets"],
-  "private": true,
-  "scripts": {
-    "prepublishOnly": "node ../sync-assets.mjs"
-  }
+  "publishConfig": { "access": "public" }
 }

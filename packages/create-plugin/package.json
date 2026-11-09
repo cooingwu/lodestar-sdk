@@ -4,5 +4,6 @@
   "description": "npm create @coohub/plugin — Lodestar 插件脚手架",
   "license": "MIT",
   "bin": { "create-lodestar-plugin": "./create.mjs" },
-  "private": true
+  "files": ["create.mjs"],
+  "publishConfig": { "access": "public" }
 }
