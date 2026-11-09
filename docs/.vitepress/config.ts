@@ -1,6 +1,8 @@
-import { defineConfig } from 'vitepress';
+// defineConfig 改为 type-only 引入：config 会被 CJS 打包 require，运行时 import ESM 包
+// 会报 "ESM file cannot be loaded by require"（vitepress 1.6.4 实测），类型提示不受影响
+import type { UserConfig } from 'vitepress';
 
-export default defineConfig({
+export default {
   // GitHub Pages 项目站：https://cooingwu.github.io/lodestar-sdk/
   base: '/lodestar-sdk/',
   title: 'Lodestar 插件开发',
@@ -28,4 +30,4 @@ export default defineConfig({
       { icon: 'github', link: 'https://github.com/cooingwu/lodestar-sdk' },
     ],
   },
-});
+} satisfies UserConfig;
